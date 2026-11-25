@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#09070f">
+  <title>Periodic Table</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #f2edfa;
+      --muted: #b0a5c2;
+      --line: #30263d;
+      --surface: #15111d;
+      --page: #09070f;
+      --accent: #b47aff;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 28px clamp(14px, 3vw, 42px) 36px;
+      color: var(--ink);
+      background: var(--page);
+      font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    main { max-width: 1440px; margin: auto; }
+    h1 { margin: 0; color: #f7f1ff; font-size: clamp(1.7rem, 3vw, 2.35rem); letter-spacing: -.04em; }
+    .intro { margin: 5px 0 20px; color: var(--muted); }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 15px; }
+    input, select {
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      padding: 8px 12px;
+      color: var(--ink);
+      background: var(--surface);
+      font: inherit;
+    }
+    input::placeholder { color: #817692; }
+    input { width: min(320px, 100%); }
+    input:focus, select:focus, button:focus-visible, .element:focus-visible {
+      outline: 3px solid #b47aff88;
+      outline-offset: 2px;
+    }
+    .count { color: var(--muted); font-size: .9rem; }
+    .table-wrap { overflow-x: auto; padding: 5px 2px 12px; }
+    .periodic-table {
+      display: grid;
+      grid-template-columns: repeat(18, minmax(54px, 1fr));
+      gap: 5px;
+      min-width: 1060px;
+    }
+    .element {
+      position: relative;
+      min-height: 79px;
+      padding: 6px 6px 5px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--ink);
+      text-align: left;
+      cursor: pointer;
+      transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
+    }
+    .element:hover { z-index: 1; transform: translateY(-2px); border-color: var(--accent); box-shadow: 0 5px 18px #9b5de533; }
+    .element[hidden] { display: none; }
+    .number { display: block; color: #c1b6d2; font-size: .68rem; line-height: 1; }
+    .symbol { display: block; margin: 3px 0 0; font-size: 1.35rem; font-weight: 720; line-height: 1.1; }
+    .mass { display: block; overflow: hidden; color: #c1b6d2; font-size: .66rem; text-overflow: ellipsis; white-space: nowrap; }
+    .cat-alkali { background: #352126; }
+    .cat-alkaline { background: #38311b; }
+    .cat-transition { background: #211c3e; }
+    .cat-post { background: #173126; }
+    .cat-metalloid { background: #1b302e; }
+    .cat-nonmetal { background: #173136; }
+    .cat-halogen { background: #2e2043; }
+    .cat-noble { background: #35203a; }
+    .cat-lanthanoid { background: #38212c; }
+    .cat-actinoid { background: #35291b; }
+    .cat-unknown { background: #252633; }
+    .series-label {
+      align-self: center;
+      color: var(--muted);
+      font-size: .76rem;
+      font-weight: 650;
+      grid-column: 1 / span 3;
+    }
+    .legend { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 6px 0 0; color: var(--muted); font-size: .78rem; }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .swatch { width: 11px; height: 11px; border-radius: 3px; }
+    .note { margin: 15px 0 0; color: var(--muted); font-size: .82rem; }
+    dialog {
+      width: min(820px, calc(100% - 24px));
+      max-height: min(90vh, 760px);
+      padding: 0;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      color: var(--ink);
+      background: var(--surface);
+      box-shadow: 0 24px 80px #000000a6;
+    }
+    dialog::backdrop { background: #090510d9; backdrop-filter: blur(3px); }
+    .dialog-head { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; padding: 20px 22px 10px; }
+    .dialog-head h2 { margin: 0; font-size: 1.6rem; }
+    .close {
+      width: 36px; height: 36px; border: 0; border-radius: 9px;
+      color: var(--ink); background: #272032; cursor: pointer; font-size: 1.25rem;
+    }
+    .detail { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(250px, .9fr); gap: 16px; padding: 0 22px 22px; }
+    .atom-box { position: relative; min-height: 310px; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: radial-gradient(ellipse at center, #20182d, #100d17); }
+    canvas { display: block; width: 100%; height: 310px; touch-action: none; cursor: grab; }
+    canvas:active { cursor: grabbing; }
+    .atom-legend { position: absolute; right: 12px; bottom: 9px; display: flex; gap: 12px; color: var(--muted); font-size: .73rem; pointer-events: none; }
+    .atom-legend i { display: inline-block; width: 9px; height: 9px; margin-right: 4px; border-radius: 50%; }
+    .proton-dot { background: #ed6b63; } .neutron-dot { background: #8190a8; } .electron-dot { background: var(--accent); }
+    .info { padding: 4px 2px; }
+    .info p { margin: 0 0 14px; color: #d0c6df; }
+    .facts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0; }
+    .facts div { padding: 10px; border: 1px solid var(--line); border-radius: 9px; }
+    .facts dt { color: var(--muted); font-size: .72rem; }
+    .facts dd { margin: 2px 0 0; font-weight: 650; }
+    .atom-note { margin: 12px 0 0; color: var(--muted); font-size: .75rem; }
+    @media (max-width: 650px) {
+      body { padding-top: 20px; }
+      .detail { grid-template-columns: 1fr; padding: 0 15px 16px; }
+      .dialog-head { padding: 16px 15px 9px; }
+      .atom-box, canvas { min-height: 260px; height: 260px; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Periodic Table</h1>
+    <p class="intro">Explore all 118 elements. Select one to see its properties and an interactive atom.</p>
+    <div class="toolbar">
+      <input id="search" type="search" aria-label="Search elements" placeholder="Search by name, symbol, or number">
+      <select id="category" aria-label="Filter by category">
+        <option value="">All categories</option>
+      </select>
+      <span class="count" id="count" aria-live="polite"></span>
+    </div>
+    <div class="table-wrap">
+      <div class="periodic-table" id="table" aria-label="Periodic table of elements"></div>
+    </div>
+    <div class="legend" id="legend"></div>
+    <p class="note">Atomic masses are in u. Values in brackets are the mass numbers of representative isotopes for elements without a standard atomic weight.</p>
+  </main>
+
+  <dialog id="detail-dialog" aria-labelledby="element-title">
+    <div class="dialog-head">
+      <div><h2 id="element-title"></h2><span id="element-subtitle" class="count"></span></div>
+      <button class="close" id="close-dialog" aria-label="Close element details">×</button>
+    </div>
+    <div class="detail">
+      <div class="atom-box">
+        <canvas id="atom" aria-label="Interactive 3D-style atom model"></canvas>
+        <div class="atom-legend">
+          <span><i class="proton-dot"></i>Proton</span><span><i class="neutron-dot"></i>Neutron</span><span><i class="electron-dot"></i>Electron</span>
+        </div>
+      </div>
+      <section class="info" aria-label="Element details">
+        <p id="description"></p>
+        <dl class="facts" id="facts"></dl>
+        <p class="atom-note">Drag to rotate. This Bohr-style illustration is simplified and not to scale; the nucleus is capped visually for smooth performance.</p>
+      </section>
+    </div>
+  </dialog>
+
+  <script>
+    const data = [
+      ["H","Hydrogen","1.008"],["He","Helium","4.0026"],
+      ["Li","Lithium","6.94"],["Be","Beryllium","9.0122"],["B","Boron","10.81"],["C","Carbon","12.011"],["N","Nitrogen","14.007"],["O","Oxygen","15.999"],["F","Fluorine","18.998"],["Ne","Neon","20.180"],
+      ["Na","Sodium","22.990"],["Mg","Magnesium","24.305"],["Al","Aluminium","26.982"],["Si","Silicon","28.085"],["P","Phosphorus","30.974"],["S","Sulfur","32.06"],["Cl","Chlorine","35.45"],["Ar","Argon","39.948"],
+      ["K","Potassium","39.098"],["Ca","Calcium","40.078"],["Sc","Scandium","44.956"],["Ti","Titanium","47.867"],["V","Vanadium","50.942"],["Cr","Chromium","51.996"],["Mn","Manganese","54.938"],["Fe","Iron","55.845"],["Co","Cobalt","58.933"],["Ni","Nickel","58.693"],["Cu","Copper","63.546"],["Zn","Zinc","65.38"],["Ga","Gallium","69.723"],["Ge","Germanium","72.630"],["As","Arsenic","74.922"],["Se","Selenium","78.971"],["Br","Bromine","79.904"],["Kr","Krypton","83.798"],
+      ["Rb","Rubidium","85.468"],["Sr","Strontium","87.62"],["Y","Yttrium","88.906"],["Zr","Zirconium","91.224"],["Nb","Niobium","92.906"],["Mo","Molybdenum","95.95"],["Tc","Technetium","[98]"],["Ru","Ruthenium","101.07"],["Rh","Rhodium","102.91"],["Pd","Palladium","106.42"],["Ag","Silver","107.87"],["Cd","Cadmium","112.41"],["In","Indium","114.82"],["Sn","Tin","118.71"],["Sb","Antimony","121.76"],["Te","Tellurium","127.60"],["I","Iodine","126.90"],["Xe","Xenon","131.29"],
+      ["Cs","Caesium","132.91"],["Ba","Barium","137.33"],["La","Lanthanum","138.91"],["Ce","Cerium","140.12"],["Pr","Praseodymium","140.91"],["Nd","Neodymium","144.24"],["Pm","Promethium","[145]"],["Sm","Samarium","150.36"],["Eu","Europium","151.96"],["Gd","Gadolinium","157.25"],["Tb","Terbium","158.93"],["Dy","Dysprosium","162.50"],["Ho","Holmium","164.93"],["Er","Erbium","167.26"],["Tm","Thulium","168.93"],["Yb","Ytterbium","173.05"],["Lu","Lutetium","174.97"],["Hf","Hafnium","178.49"],["Ta","Tantalum","180.95"],["W","Tungsten","183.84"],["Re","Rhenium","186.21"],["Os","Osmium","190.23"],["Ir","Iridium","192.22"],["Pt","Platinum","195.08"],["Au","Gold","196.97"],["Hg","Mercury","200.59"],["Tl","Thallium","204.38"],["Pb","Lead","207.2"],["Bi","Bismuth","208.98"],["Po","Polonium","[209]"],["At","Astatine","[210]"],["Rn","Radon","[222]"],
+      ["Fr","Francium","[223]"],["Ra","Radium","[226]"],["Ac","Actinium","[227]"],["Th","Thorium","232.04"],["Pa","Protactinium","231.04"],["U","Uranium","238.03"],["Np","Neptunium","[237]"],["Pu","Plutonium","[244]"],["Am","Americium","[243]"],["Cm","Curium","[247]"],["Bk","Berkelium","[247]"],["Cf","Californium","[251]"],["Es","Einsteinium","[252]"],["Fm","Fermium","[257]"],["Md","Mendelevium","[258]"],["No","Nobelium","[259]"],["Lr","Lawrencium","[266]"],["Rf","Rutherfordium","[267]"],["Db","Dubnium","[268]"],["Sg","Seaborgium","[269]"],["Bh","Bohrium","[270]"],["Hs","Hassium","[277]"],["Mt","Meitnerium","[278]"],["Ds","Darmstadtium","[281]"],["Rg","Roentgenium","[282]"],["Cn","Copernicium","[285]"],["Nh","Nihonium","[286]"],["Fl","Flerovium","[289]"],["Mc","Moscovium","[290]"],["Lv","Livermorium","[293]"],["Ts","Tennessine","[294]"],["Og","Oganesson","[294]"]
+    ];
+
+    const rows = [
+      [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2],
+      [3,4,0,0,0,0,0,0,0,0,0,0,5,6,7,8,9,10],
+      [11,12,0,0,0,0,0,0,0,0,0,0,13,14,15,16,17,18],
+      Array.from({length:18}, (_, i) => i + 19),
+      Array.from({length:18}, (_, i) => i + 37),
+      [55,56,57,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86],
+      [87,88,89,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118]
+    ];
+    const categoryNames = ["Alkali metal","Alkaline earth metal","Transition metal","Post-transition metal","Metalloid","Reactive nonmetal","Halogen","Noble gas","Lanthanoid","Actinoid","Unknown"];
+    const categoryClass = ["alkali","alkaline","transition","post","metalloid","nonmetal","halogen","noble","lanthanoid","actinoid","unknown"];
+    const elementCategory = z => {
+      if ([3,11,19,37,55,87].includes(z)) return 0;
+      if ([4,12,20,38,56,88].includes(z)) return 1;
+      if ((z >= 21 && z <= 30) || (z >= 39 && z <= 48) || (z >= 72 && z <= 80) || (z >= 104 && z <= 112)) return 2;
+      if ([5,14,32,33,51,52].includes(z)) return 4;
+      if ([1,6,7,8,15,16,34].includes(z)) return 5;
+      if ([9,17,35,53,85,117].includes(z)) return 6;
+      if ([2,10,18,36,54,86,118].includes(z)) return 7;
+      if (z >= 57 && z <= 71) return 8;
+      if (z >= 89 && z <= 103) return 9;
+      if ([13,31,49,50,81,82,83,84,113,114,115,116].includes(z)) return 3;
+      return 10;
+    };
+    const elements = data.map((item, index) => {
+      const z = index + 1;
+      const position = rows.flatMap((row, period) => row.map((number, group) => number === z ? {period: period + 1, group: group + 1} : null)).find(Boolean);
+      return {z, symbol:item[0], name:item[1], mass:item[2], category:elementCategory(z), period:position ? position.period : z <= 71 ? 6 : 7, group:position ? position.group : null};
+    });
+
+    const table = document.getElementById("table");
+    const search = document.getElementById("search");
+    const category = document.getElementById("category");
+    const count = document.getElementById("count");
+    const dialog = document.getElementById("detail-dialog");
+    const canvas = document.getElementById("atom");
+    const context = canvas.getContext("2d", {alpha:true});
+    let activeElement = null, animationFrame = 0, lastFrame = 0, rotationX = -.35, rotationY = .45, drag = null;
+
+    categoryNames.forEach((name, index) => {
+      const option = document.createElement("option");
+      option.value = String(index);
+      option.textContent = name;
+      category.append(option);
+    });
+
+    const createTile = element => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `element cat-${categoryClass[element.category]}`;
+      button.dataset.z = String(element.z);
+      button.dataset.search = `${element.name} ${element.symbol} ${element.z}`.toLowerCase();
+      button.setAttribute("aria-label", `${element.name}, atomic number ${element.z}, atomic mass ${element.mass} u`);
+      button.innerHTML = `<span class="number">${element.z}</span><span class="symbol">${element.symbol}</span><span class="mass">${element.mass}</span>`;
+      button.addEventListener("click", () => showElement(element));
+      return button;
+    };
+
+    rows.forEach((row, period) => row.forEach((z, group) => {
+      if (!z) return;
+      const tile = createTile(elements[z - 1]);
+      tile.style.gridColumn = String(group + 1);
+      tile.style.gridRow = String(period + 1);
+      table.append(tile);
+    }));
+    [8,9].forEach((period, seriesIndex) => {
+      const label = document.createElement("span");
+      label.className = "series-label";
+      label.style.gridRow = String(period);
+      label.textContent = seriesIndex === 0 ? "Lanthanides" : "Actinides";
+      table.append(label);
+      const start = seriesIndex === 0 ? 58 : 90;
+      for (let z = start; z < start + 14; z++) {
+        const tile = createTile(elements[z - 1]);
+        tile.style.gridColumn = String(z - start + 4);
+        tile.style.gridRow = String(period);
+        table.append(tile);
+      }
+    });
+    categoryNames.forEach((name, index) => {
+      const item = document.createElement("span");
+      item.innerHTML = `<i class="swatch cat-${categoryClass[index]}"></i>${name}`;
+      document.getElementById("legend").append(item);
+    });
+
+    function filterElements() {
+      const query = search.value.trim().toLowerCase();
+      const selectedCategory = category.value;
+      let shown = 0;
+      table.querySelectorAll(".element").forEach(tile => {
+        const element = elements[Number(tile.dataset.z) - 1];
+        const matches = tile.dataset.search.includes(query) && (selectedCategory === "" || String(element.category) === selectedCategory);
+        tile.hidden = !matches;
+        if (matches) shown++;
+      });
+      count.textContent = `${shown} of 118 elements`;
+    }
+    search.addEventListener("input", filterElements);
+    category.addEventListener("change", filterElements);
+    filterElements();
+
+    const electronShells = z => {
+      const subshells = [[1,2],[2,2],[2,6],[3,2],[3,6],[4,2],[3,10],[4,6],[5,2],[4,10],[5,6],[6,2],[4,14],[5,10],[6,6],[7,2],[5,14],[6,10],[7,6]];
+      const shells = [0,0,0,0,0,0,0];
+      let remaining = z;
+      for (const [shell, capacity] of subshells) {
+        const amount = Math.min(remaining, capacity);
+        shells[shell - 1] += amount;
+        remaining -= amount;
+        if (remaining === 0) break;
+      }
+      return shells.filter(amount => amount > 0);
+    };
+    const descriptionFor = element => {
+      const label = categoryNames[element.category].toLowerCase();
+      const notes = {
+        0:"These metals are highly reactive, especially with water, and are commonly stored away from air and moisture.",
+        1:"These metals tend to form +2 ions; several are found in minerals and have important structural or biological roles.",
+        2:"Transition metals often have multiple oxidation states and are widely used in alloys, catalysts, and technology.",
+        3:"This metal has properties between those of transition metals and metalloids; many members are useful in electronics and everyday materials.",
+        4:"Metalloids have a mix of metallic and nonmetallic properties, making some of them valuable semiconductors.",
+        5:"Nonmetals are generally poor conductors; this group includes elements essential to life and common chemical compounds.",
+        6:"Halogens are reactive nonmetals that readily form salts when combined with metals.",
+        7:"Noble gases are usually very unreactive because their outer electron shells are filled.",
+        8:"Lanthanides are silvery, reactive metals used in magnets, phosphors, and other advanced materials.",
+        9:"Actinoids are heavy, radioactive metals; some are used as nuclear fuels or in scientific research.",
+        10:"The chemical properties of this element are not yet well established."
+      };
+      return `${element.name} is a ${label} in period ${element.period}${element.group ? `, group ${element.group}` : ""}. Its atomic number is ${element.z}, so a neutral atom has ${element.z} protons and ${element.z} electrons. ${notes[element.category]}`;
+    };
+
+    function showElement(element) {
+      activeElement = element;
+      const neutrons = Math.max(0, Math.round(Number(element.mass.replace(/[\[\]]/g, "")) || element.z) - element.z);
+      document.getElementById("element-title").textContent = `${element.name} (${element.symbol})`;
+      document.getElementById("element-subtitle").textContent = `Element ${element.z}`;
+      document.getElementById("description").textContent = descriptionFor(element);
+      const facts = [
+        ["Atomic number", element.z],
+        ["Atomic mass", `${element.mass} u`],
+        ["Category", categoryNames[element.category]],
+        ["Period", element.period],
+        ["Group", element.group || "—"],
+        ["Protons / electrons", `${element.z} / ${element.z}`],
+        ["Approx. neutrons", `≈ ${neutrons}`],
+        ["Electron shells", electronShells(element.z).join(" · ")]
+      ];
+      document.getElementById("facts").innerHTML = facts.map(([key,value]) => `<div><dt>${key}</dt><dd>${value}</dd></div>`).join("");
+      if (!dialog.open) dialog.showModal();
+      resizeCanvas();
+      cancelAnimationFrame(animationFrame);
+      lastFrame = 0;
+      animationFrame = requestAnimationFrame(drawAtom);
+    }
+    document.getElementById("close-dialog").addEventListener("click", () => dialog.close());
+    dialog.addEventListener("click", event => { if (event.target === dialog) dialog.close(); });
+    dialog.addEventListener("close", () => cancelAnimationFrame(animationFrame));
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      canvas.width = Math.max(1, Math.round(rect.width * dpr));
+      canvas.height = Math.max(1, Math.round(rect.height * dpr));
+      context.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    const onResize = new ResizeObserver(() => { if (dialog.open) resizeCanvas(); });
+    onResize.observe(canvas);
+
+    function drawAtom(timestamp) {
+      if (!dialog.open || !activeElement) return;
+      animationFrame = requestAnimationFrame(drawAtom);
+      if (timestamp - lastFrame < 32) return;
+      lastFrame = timestamp;
+      const rect = canvas.getBoundingClientRect();
+      const width = rect.width, height = rect.height;
+      context.clearRect(0, 0, width, height);
+      const cx = width / 2, cy = height / 2;
+      const scale = Math.min(width, height) * .34;
+      const z = activeElement.z;
+      const neutrons = Math.max(0, Math.round(Number(activeElement.mass.replace(/[\[\]]/g, "")) || z) - z);
+      const nucleons = Math.min(84, z + neutrons);
+      const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+      const spin = timestamp * .00015;
+      const points = [];
+      for (let i = 0; i < nucleons; i++) {
+        const y = 1 - (i / Math.max(1, nucleons - 1)) * 2;
+        const radius = Math.sqrt(Math.max(0, 1 - y * y));
+        const angle = goldenAngle * i;
+        points.push({x:radius * Math.cos(angle) * .19, y:y * .19, z:radius * Math.sin(angle) * .19, proton:i < Math.round(nucleons * z / Math.max(1, z + neutrons))});
+      }
+      const project = point => {
+        const x1 = point.x * Math.cos(rotationY + spin) - point.z * Math.sin(rotationY + spin);
+        const z1 = point.x * Math.sin(rotationY + spin) + point.z * Math.cos(rotationY + spin);
+        const y2 = point.y * Math.cos(rotationX) - z1 * Math.sin(rotationX);
+        const z2 = point.y * Math.sin(rotationX) + z1 * Math.cos(rotationX);
+        const perspective = 1 / (1 + z2 * .18);
+        return {x:cx + x1 * scale * perspective, y:cy + y2 * scale * perspective, depth:z2, size:perspective};
+      };
+      const shells = electronShells(z);
+      shells.forEach((electrons, index) => {
+        const orbit = .40 + index * .105;
+        const tilt = index * .78 + .35;
+        context.beginPath();
+        for (let step = 0; step <= 100; step++) {
+          const angle = step / 100 * Math.PI * 2;
+          const p = project({x:Math.cos(angle) * orbit, y:Math.sin(angle) * orbit * Math.cos(tilt), z:Math.sin(angle) * orbit * Math.sin(tilt)});
+          if (step === 0) context.moveTo(p.x, p.y); else context.lineTo(p.x, p.y);
+        }
+        context.strokeStyle = "#b47aff55";
+        context.lineWidth = 1;
+        context.stroke();
+        for (let electron = 0; electron < electrons; electron++) {
+          const angle = electron / electrons * Math.PI * 2 + spin * (index % 2 ? 1 : -1) * 2;
+          const p = project({x:Math.cos(angle) * orbit, y:Math.sin(angle) * orbit * Math.cos(tilt), z:Math.sin(angle) * orbit * Math.sin(tilt)});
+          points.push({screen:p, electron:true});
+        }
+      });
+      const rendered = points.map(point => point.screen ? point : {screen:project(point), ...point}).sort((a,b) => a.screen.depth - b.screen.depth);
+      rendered.forEach(point => {
+        const p = point.screen;
+        const radius = point.electron ? 3.2 : 2.6 * p.size;
+        context.beginPath();
+        context.arc(p.x, p.y, radius, 0, Math.PI * 2);
+        context.fillStyle = point.electron ? "#b47aff" : point.proton ? "#ed6b63" : "#8190a8";
+        context.globalAlpha = point.electron ? 1 : .92;
+        context.fill();
+      });
+      context.globalAlpha = 1;
+      context.fillStyle = "#b0a5c2";
+      context.font = "12px system-ui, sans-serif";
+      context.textAlign = "center";
+      context.fillText(`${z} p+  ·  ≈${neutrons} n⁰  ·  ${z} e−`, cx, height - 14);
+    }
+
+    canvas.addEventListener("pointerdown", event => {
+      drag = {x:event.clientX, y:event.clientY};
+      canvas.setPointerCapture(event.pointerId);
+    });
+    canvas.addEventListener("pointermove", event => {
+      if (!drag) return;
+      rotationY += (event.clientX - drag.x) * .009;
+      rotationX = Math.max(-1.35, Math.min(1.35, rotationX + (event.clientY - drag.y) * .009));
+      drag = {x:event.clientX, y:event.clientY};
+    });
+    canvas.addEventListener("pointerup", () => { drag = null; });
+    canvas.addEventListener("pointercancel", () => { drag = null; });
+  </script>
+</body>
+</html>
