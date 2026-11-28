@@ -24,5 +24,4 @@ Open `index.html` in a modern web browser. No installation or build tools are re
 This project is published from the `main` branch at the repository root. Because it is a project site, its URL is:
 
 `https://8ball8b.github.io/periodic-table/`
-
-The shorter address `https://caspsperiodic.github.io/` is a user or organization site address. To use it, the GitHub account or organization must be named `caspsperiodic`, and it must have a repository named `caspsperiodic.github.io`.
+ Go give it a try.
